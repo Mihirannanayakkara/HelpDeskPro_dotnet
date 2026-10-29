@@ -4,6 +4,7 @@ using HelpDeskPro.Middleware;
 using HelpDeskPro.Models;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace HelpDeskPro.Services;
 
 public interface ITicketService
@@ -12,6 +13,9 @@ public interface ITicketService
     Task<TicketDto> GetByIdAsync(int id, int userId, Role role);
     Task<TicketDto> CreateAsync(CreateTicketDto dto, int userId, Role role);
     Task<TicketDto> UpdateAsync(int id, UpdateTicketDto dto, int userId, Role role);
+    Task<TicketDto> AssignAsync(int id, AssignTicketDto dto, int userId, Role role);
+Task<TicketDto> ChangeStatusAsync(int id, ChangeStatusDto dto, int userId, Role role);
+Task<List<HistoryDto>> GetHistoryAsync(int id, int userId, Role role);
 }
 
 public class TicketService(AppDbContext db) : ITicketService
@@ -106,4 +110,119 @@ public class TicketService(AppDbContext db) : ITicketService
         await db.SaveChangesAsync();
         return await GetByIdAsync(ticket.Id, userId, role);
     }
+    public async Task<TicketDto> AssignAsync(int id, AssignTicketDto dto, int userId, Role role)
+{
+    if (role == Role.Requester)
+        throw new ForbiddenException("Only agents and admins can assign tickets.");
+
+    var ticket = await db.Tickets.Include(t => t.AssignedAgent).FirstOrDefaultAsync(t => t.Id == id)
+        ?? throw new NotFoundException($"Ticket {id} was not found.");
+
+    if (ticket.Status is TicketStatus.Resolved or TicketStatus.Closed)
+        throw new BusinessRuleException("Resolved or closed tickets cannot be reassigned.");
+
+    // Agents can only assign to themselves; admins can assign anyone or unassign
+    if (role == Role.Agent && dto.AgentId != userId)
+        throw new ForbiddenException("Agents can only assign tickets to themselves.");
+
+    User? newAgent = null;
+    if (dto.AgentId is not null)
+    {
+        newAgent = await db.Users.FirstOrDefaultAsync(u => u.Id == dto.AgentId)
+            ?? throw new BusinessRuleException("Agent does not exist.");
+        if (!newAgent.IsActive || newAgent.Role == Role.Requester)
+            throw new BusinessRuleException("The assignee must be an active agent or admin.");
+    }
+    else if (ticket.Status != TicketStatus.Open && ticket.Status != TicketStatus.Assigned)
+    {
+        throw new BusinessRuleException("Move the ticket back to Assigned before unassigning it.");
+    }
+
+    var oldName = ticket.AssignedAgent?.Name;
+    if (ticket.AssignedAgentId == dto.AgentId)
+        return await GetByIdAsync(id, userId, role);   // nothing changed
+
+    ticket.AssignedAgentId = dto.AgentId;
+    ticket.UpdatedAt = DateTime.UtcNow;
+    AddHistory(ticket.Id, userId, "AssignedAgent", oldName, newAgent?.Name);
+
+    // Assigning an open ticket moves it to Assigned; unassigning returns it to Open
+    if (newAgent is not null && ticket.Status == TicketStatus.Open)
+    {
+        AddHistory(ticket.Id, userId, "Status", ticket.Status.ToString(), TicketStatus.Assigned.ToString());
+        ticket.Status = TicketStatus.Assigned;
+    }
+    else if (newAgent is null && ticket.Status == TicketStatus.Assigned)
+    {
+        AddHistory(ticket.Id, userId, "Status", ticket.Status.ToString(), TicketStatus.Open.ToString());
+        ticket.Status = TicketStatus.Open;
+    }
+
+    await db.SaveChangesAsync();
+    return await GetByIdAsync(id, userId, role);
+}
+
+public async Task<TicketDto> ChangeStatusAsync(int id, ChangeStatusDto dto, int userId, Role role)
+{
+    var ticket = await Visible(userId, role).FirstOrDefaultAsync(t => t.Id == id)
+        ?? throw new NotFoundException($"Ticket {id} was not found.");
+
+    var newStatus = dto.Status!.Value;
+    var oldStatus = ticket.Status;
+
+    if (!TicketWorkflow.CanTransition(oldStatus, newStatus))
+        throw new BusinessRuleException($"A ticket cannot move from {oldStatus} to {newStatus}.");
+
+    // Permission rules
+    if (role == Role.Requester)
+    {
+        // The only thing a requester may do: close their own resolved ticket
+        if (!(oldStatus == TicketStatus.Resolved && newStatus == TicketStatus.Closed))
+            throw new ForbiddenException("Requesters can only close their own resolved tickets.");
+    }
+    if (oldStatus == TicketStatus.Closed && role != Role.Admin)
+        throw new ForbiddenException("Only an admin can reopen a closed ticket.");
+
+    // Agent rules
+    if (newStatus is TicketStatus.InProgress or TicketStatus.Resolved && ticket.AssignedAgentId is null)
+        throw new BusinessRuleException("Assign the ticket to an agent first.");
+    if (role == Role.Agent && ticket.AssignedAgentId != userId && newStatus != TicketStatus.Closed)
+        throw new ForbiddenException("Only the assigned agent or an admin can change this ticket's status.");
+
+    // Moving back to Open must also clear the assignee
+    if (newStatus == TicketStatus.Open)
+    {
+        AddHistory(ticket.Id, userId, "AssignedAgent", ticket.AssignedAgentId?.ToString(), null);
+        ticket.AssignedAgentId = null;
+    }
+
+    ticket.Status = newStatus;
+    ticket.UpdatedAt = DateTime.UtcNow;
+    if (newStatus == TicketStatus.Resolved) ticket.ResolvedAt = DateTime.UtcNow;
+    if (oldStatus is TicketStatus.Resolved or TicketStatus.Closed && newStatus == TicketStatus.InProgress)
+        ticket.ResolvedAt = null;
+
+    AddHistory(ticket.Id, userId, "Status", oldStatus.ToString(), newStatus.ToString());
+    await db.SaveChangesAsync();
+    return await GetByIdAsync(id, userId, role);
+}
+
+public async Task<List<HistoryDto>> GetHistoryAsync(int id, int userId, Role role)
+{
+    if (!await Visible(userId, role).AnyAsync(t => t.Id == id))
+        throw new NotFoundException($"Ticket {id} was not found.");
+
+    return await db.TicketHistories
+        .Where(h => h.TicketId == id)
+        .OrderBy(h => h.ChangedAt).ThenBy(h => h.Id)
+        .Select(h => new HistoryDto(h.Field, h.OldValue, h.NewValue, h.ChangedBy!.Name, h.ChangedAt))
+        .ToListAsync();
+}
+
+private void AddHistory(int ticketId, int userId, string field, string? oldValue, string? newValue) =>
+    db.TicketHistories.Add(new TicketHistory
+    {
+        TicketId = ticketId, ChangedById = userId,
+        Field = field, OldValue = oldValue, NewValue = newValue
+    });
 }

@@ -7,7 +7,7 @@ public class NotFoundException(string message) : Exception(message);
 public class ForbiddenException(string message) : Exception(message);
 public class BusinessRuleException(string message) : Exception(message);
 
-public class ApiExceptionHandler : IExceptionHandler
+public class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception ex, CancellationToken ct)
     {
@@ -19,7 +19,15 @@ public class ApiExceptionHandler : IExceptionHandler
             _ => (0, "")
         };
 
-        if (status == 0) return false;   // unknown error: let the default handler return 500
+        if (status == 0)
+        {
+            logger.LogError(ex, "Unhandled exception on {Method} {Path}",
+                context.Request.Method, context.Request.Path);
+            return false;                    // default handler returns a generic 500
+        }
+
+        logger.LogWarning("{Status} on {Method} {Path}: {Message}",
+            status, context.Request.Method, context.Request.Path, ex.Message);
 
         context.Response.StatusCode = status;
         await context.Response.WriteAsJsonAsync(

@@ -211,8 +211,9 @@ public class TicketService(AppDbContext db) : ITicketService
 
 public async Task<TicketDto> ChangeStatusAsync(int id, ChangeStatusDto dto, int userId, Role role)
 {
-    var ticket = await Visible(userId, role).FirstOrDefaultAsync(t => t.Id == id)
-        ?? throw new NotFoundException($"Ticket {id} was not found.");
+    var ticket = await Visible(userId, role).Include(t => t.AssignedAgent)
+    .FirstOrDefaultAsync(t => t.Id == id)
+    ?? throw new NotFoundException($"Ticket {id} was not found.");
 
     var newStatus = dto.Status!.Value;
     var oldStatus = ticket.Status;
@@ -239,8 +240,11 @@ public async Task<TicketDto> ChangeStatusAsync(int id, ChangeStatusDto dto, int 
     // Moving back to Open must also clear the assignee
     if (newStatus == TicketStatus.Open)
     {
-        AddHistory(ticket.Id, userId, "AssignedAgent", ticket.AssignedAgentId?.ToString(), null);
-        ticket.AssignedAgentId = null;
+       if (newStatus == TicketStatus.Open)
+{
+    AddHistory(ticket.Id, userId, "AssignedAgent", ticket.AssignedAgent?.Name, null);
+    ticket.AssignedAgentId = null;
+}
     }
 
     ticket.Status = newStatus;

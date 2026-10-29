@@ -1,0 +1,79 @@
+@baseUrl = http://localhost:5146
+
+# @name loginAdmin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@helpdesk.local", "password": "Admin@12345" }
+
+###
+@adminToken = {{loginAdmin.response.body.token}}
+
+# @name loginAli
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "ali@test.com", "password": "Passw0rd!" }
+
+###
+@aliToken = {{loginAli.response.body.token}}
+
+# @name loginSara
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "sara@test.com", "password": "Passw0rd!" }
+
+###
+@saraToken = {{loginSara.response.body.token}}
+
+### 1. Dashboard as Sara (200)
+GET {{baseUrl}}/api/dashboard/stats
+Authorization: Bearer {{saraToken}}
+
+### 2. Dashboard as Ali (403)
+GET {{baseUrl}}/api/dashboard/stats
+Authorization: Bearer {{aliToken}}
+
+### 3. Admin deactivates self (400)
+PUT {{baseUrl}}/api/users/1/deactivate
+Authorization: Bearer {{adminToken}}
+
+### 4. Admin changes own role (400)
+PUT {{baseUrl}}/api/users/1/role
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "role": "Requester" }
+
+### 5. Deactivate Ali (204)
+PUT {{baseUrl}}/api/users/2/deactivate
+Authorization: Bearer {{adminToken}}
+
+### 6. Ali's OLD token now fails (401)
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer {{aliToken}}
+
+### 7. Ali cannot log in (401)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "ali@test.com", "password": "Passw0rd!" }
+
+### 8. Reactivate Ali (204)
+PUT {{baseUrl}}/api/users/2/activate
+Authorization: Bearer {{adminToken}}
+
+### 9. Numeric enum rejected (400)
+POST {{baseUrl}}/api/tickets
+Authorization: Bearer {{saraToken}}
+Content-Type: application/json
+
+{ "title": "Enum test ticket", "description": "Testing numeric enum values.", "categoryId": 1, "priority": 99 }
+
+### 10. Deactivate an agent who still has active tickets (400)
+PUT {{baseUrl}}/api/users/3/deactivate
+Authorization: Bearer {{adminToken}}
+
+### 11. Health check (200, no token needed)
+GET {{baseUrl}}/health

@@ -3,13 +3,14 @@ using HelpDeskPro.Dtos;
 using HelpDeskPro.Middleware;
 using HelpDeskPro.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 
 namespace HelpDeskPro.Services;
 
 public interface ITicketService
 {
-    Task<List<TicketDto>> GetAllAsync(int userId, Role role);
+    Task<PagedResult<TicketDto>> GetAllAsync(TicketQuery q, int userId, Role role);
     Task<TicketDto> GetByIdAsync(int id, int userId, Role role);
     Task<TicketDto> CreateAsync(CreateTicketDto dto, int userId, Role role);
     Task<TicketDto> UpdateAsync(int id, UpdateTicketDto dto, int userId, Role role);
@@ -36,9 +37,55 @@ public class TicketService(AppDbContext db) : ITicketService
                 && t.Status != TicketStatus.Resolved && t.Status != TicketStatus.Closed));
     }
 
-    public async Task<List<TicketDto>> GetAllAsync(int userId, Role role) =>
-        await Project(Visible(userId, role).OrderByDescending(t => t.CreatedAt)).ToListAsync();
+    public async Task<PagedResult<TicketDto>> GetAllAsync(TicketQuery q, int userId, Role role)
+{
+    var query = Visible(userId, role);          // role rule is applied FIRST, always
+    var now = DateTime.UtcNow;
 
+    // Filters
+    if (q.Status is not null)   query = query.Where(t => t.Status == q.Status);
+    if (q.Priority is not null) query = query.Where(t => t.Priority == q.Priority);
+    if (q.AssignedTo is not null) query = query.Where(t => t.AssignedAgentId == q.AssignedTo);
+    if (q.Unassigned == true)   query = query.Where(t => t.AssignedAgentId == null);
+
+    if (q.Overdue == true)
+        query = query.Where(t => t.DueAt != null && t.DueAt < now
+            && t.Status != TicketStatus.Resolved && t.Status != TicketStatus.Closed);
+
+    if (!string.IsNullOrWhiteSpace(q.Search))
+    {
+        var pattern = $"%{q.Search.Trim()}%";
+        query = query.Where(t => EF.Functions.Like(t.Title, pattern)
+                              || EF.Functions.Like(t.Description, pattern));
+    }
+
+    // Count BEFORE paging
+    var total = await query.CountAsync();
+
+    // Sorting (a whitelist, never trust raw column names from the client)
+    var desc = !string.Equals(q.SortDir, "asc", StringComparison.OrdinalIgnoreCase);
+
+    // Priority is stored as text, so sorting by it would be alphabetical.
+    // This CASE expression sorts by real severity instead.
+    var severity = (Expression<Func<Ticket, int>>)(t =>
+        t.Priority == Priority.Critical ? 4 :
+        t.Priority == Priority.High ? 3 :
+        t.Priority == Priority.Medium ? 2 : 1);
+
+    query = q.SortBy.ToLowerInvariant() switch
+    {
+        "duedat"    => desc ? query.OrderByDescending(t => t.DueAt) : query.OrderBy(t => t.DueAt),
+        "priority"  => desc ? query.OrderByDescending(severity) : query.OrderBy(severity),
+        "updatedat" => desc ? query.OrderByDescending(t => t.UpdatedAt) : query.OrderBy(t => t.UpdatedAt),
+        _           => desc ? query.OrderByDescending(t => t.CreatedAt) : query.OrderBy(t => t.CreatedAt)
+    };
+
+    // Tie-breaker so pages never overlap or skip rows
+    var ordered = ((IOrderedQueryable<Ticket>)query).ThenBy(t => t.Id);
+
+    var items = await Project(ordered.Skip((q.Page - 1) * q.PageSize).Take(q.PageSize)).ToListAsync();
+    return new PagedResult<TicketDto>(items, q.Page, q.PageSize, total);
+}
     public async Task<TicketDto> GetByIdAsync(int id, int userId, Role role) =>
         await Project(Visible(userId, role).Where(t => t.Id == id)).FirstOrDefaultAsync()
         ?? throw new NotFoundException($"Ticket {id} was not found.");

@@ -1,0 +1,71 @@
+@baseUrl = http://localhost:5146
+
+# @name loginSara
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "sara@test.com", "password": "Passw0rd!" }
+
+###
+@saraToken = {{loginSara.response.body.token}}
+
+# @name loginAli
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "ali@test.com", "password": "Passw0rd!" }
+
+###
+@aliToken = {{loginAli.response.body.token}}
+
+### 1. Default (page 1, 10 items, newest first)
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer {{saraToken}}
+
+### 2. Small pages
+GET {{baseUrl}}/api/tickets?page=1&pageSize=2
+Authorization: Bearer {{saraToken}}
+
+### 3. Page 2
+GET {{baseUrl}}/api/tickets?page=2&pageSize=2
+Authorization: Bearer {{saraToken}}
+
+### 4. Filter by status
+GET {{baseUrl}}/api/tickets?status=Open
+Authorization: Bearer {{saraToken}}
+
+### 5. Filter by priority
+GET {{baseUrl}}/api/tickets?priority=High
+Authorization: Bearer {{saraToken}}
+
+### 6. Search (try different capitalisation too)
+GET {{baseUrl}}/api/tickets?search=laptop
+Authorization: Bearer {{saraToken}}
+
+### 7. Sort by priority, most severe first
+GET {{baseUrl}}/api/tickets?sortBy=priority&sortDir=desc
+Authorization: Bearer {{saraToken}}
+
+### 8. Sort by due date, soonest first
+GET {{baseUrl}}/api/tickets?sortBy=dueAt&sortDir=asc
+Authorization: Bearer {{saraToken}}
+
+### 9. Agent queue: unassigned tickets
+GET {{baseUrl}}/api/tickets?unassigned=true&status=Open
+Authorization: Bearer {{saraToken}}
+
+### 10. Combined
+GET {{baseUrl}}/api/tickets?status=Open&priority=High&search=outlook&sortBy=dueAt&page=1&pageSize=5
+Authorization: Bearer {{saraToken}}
+
+### 11. Ali still only sees his own tickets, whatever he filters
+GET {{baseUrl}}/api/tickets?pageSize=50
+Authorization: Bearer {{aliToken}}
+
+### 12. Bad page size (400)
+GET {{baseUrl}}/api/tickets?pageSize=1000
+Authorization: Bearer {{saraToken}}
+
+### 13. Bad enum value (400)
+GET {{baseUrl}}/api/tickets?status=Banana
+Authorization: Bearer {{saraToken}}

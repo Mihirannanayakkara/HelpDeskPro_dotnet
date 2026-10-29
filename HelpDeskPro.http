@@ -1,6 +1,20 @@
 @HelpDeskPro_HostAddress = http://localhost:5146
 
-GET {{HelpDeskPro_HostAddress}}/weatherforecast/
-Accept: application/json
+### Register
+POST http://localhost:5146/api/auth/register
+Content-Type: application/json
 
-###
+{ "name": "Ali Perera", "email": "ali@test.com", "password": "Passw0rd!" }
+
+### Login as the seeded admin
+POST http://localhost:5146/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@helpdesk.local", "password": "Admin@12345" }
+
+### Call a protected endpoint (paste the token from the login response)
+GET http://localhost:5146/api/auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiU3lzdGVtIEFkbWluIiwiaHR0cDovL3NjaGVtYXMueG1sc29hcC5vcmcvd3MvMjAwNS8wNS9pZGVudGl0eS9jbGFpbXMvZW1haWxhZGRyZXNzIjoiYWRtaW5AaGVscGRlc2subG9jYWwiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJBZG1pbiIsImV4cCI6MTc5MzI2MDkzMywiaXNzIjoiSGVscERlc2tQcm8iLCJhdWQiOiJIZWxwRGVza1Byb1VzZXJzIn0.cRrRw11vUX9wVWZaN4l_Qtg7Zy7uhcL-tGjnbWRegiE
+
+### Same endpoint with no token (should be 401)
+GET http://localhost:5146/api/auth/me

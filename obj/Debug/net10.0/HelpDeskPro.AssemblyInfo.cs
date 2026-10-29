@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("4bd6a9a7-18b1-4454-94ab-786c72d65c82")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("HelpDeskPro")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5e84b6febb21185866bf6a3ba0cbc2aa988dc7eb")]
 [assembly: System.Reflection.AssemblyProductAttribute("HelpDeskPro")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HelpDeskPro")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

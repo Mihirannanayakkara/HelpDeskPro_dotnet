@@ -31,6 +31,18 @@ public class UpdateTicketDto
     public Priority Priority { get; set; }
 }
 
+public class AssignTicketDto
+{
+    public int? AgentId { get; set; }   // null = unassign (Admin only)
+}
+
+public class ChangeStatusDto
+{
+    [Required] public TicketStatus? Status { get; set; }
+}
+
+public record HistoryDto(string Field, string? OldValue, string? NewValue, string ChangedBy, DateTime ChangedAt);
+
 public record TicketDto(
     int Id, string Title, string Description,
     TicketStatus Status, Priority Priority,

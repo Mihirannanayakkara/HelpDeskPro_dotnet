@@ -1,0 +1,85 @@
+@baseUrl = http://localhost:5146
+
+# @name loginAdmin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@helpdesk.local", "password": "Admin@12345" }
+
+###
+@adminToken = {{loginAdmin.response.body.token}}
+
+# @name loginAli
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "ali@test.com", "password": "Passw0rd!" }
+
+###
+@aliToken = {{loginAli.response.body.token}}
+
+# @name loginSara
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "sara@test.com", "password": "Passw0rd!" }
+
+###
+@saraToken = {{loginSara.response.body.token}}
+
+### 1. Ali adds a public comment on his ticket (201)
+POST {{baseUrl}}/api/tickets/1/comments
+Authorization: Bearer {{aliToken}}
+Content-Type: application/json
+
+{ "text": "It still does not start after restarting.", "isInternal": false }
+
+### 2. Sara replies publicly (201)
+POST {{baseUrl}}/api/tickets/1/comments
+Authorization: Bearer {{saraToken}}
+Content-Type: application/json
+
+{ "text": "Thanks, I will check the battery and RAM.", "isInternal": false }
+
+### 3. Sara adds an internal note (201)
+POST {{baseUrl}}/api/tickets/1/comments
+Authorization: Bearer {{saraToken}}
+Content-Type: application/json
+
+{ "text": "User has had this issue before. Likely a faulty RAM stick.", "isInternal": true }
+
+### 4. Ali tries to add an internal note (403)
+POST {{baseUrl}}/api/tickets/1/comments
+Authorization: Bearer {{aliToken}}
+Content-Type: application/json
+
+{ "text": "Secret note", "isInternal": true }
+
+### 5. Ali lists comments: must show only 2 public ones
+GET {{baseUrl}}/api/tickets/1/comments
+Authorization: Bearer {{aliToken}}
+
+### 6. Sara lists comments: must show all 3
+GET {{baseUrl}}/api/tickets/1/comments
+Authorization: Bearer {{saraToken}}
+
+### 7. Ali reads comments on the admin's ticket (404)
+GET {{baseUrl}}/api/tickets/2/comments
+Authorization: Bearer {{aliToken}}
+
+### 8. Ali comments on the admin's ticket (404)
+POST {{baseUrl}}/api/tickets/2/comments
+Authorization: Bearer {{aliToken}}
+Content-Type: application/json
+
+{ "text": "Can I join in?", "isInternal": false }
+
+### 9. Empty text (400 validation)
+POST {{baseUrl}}/api/tickets/1/comments
+Authorization: Bearer {{aliToken}}
+Content-Type: application/json
+
+{ "text": "", "isInternal": false }
+
+### 10. No token (401)
+GET {{baseUrl}}/api/tickets/1/comments

@@ -28,4 +28,16 @@ public class TicketsController(ITicketService tickets) : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<ActionResult<TicketDto>> Update(int id, UpdateTicketDto dto) =>
         Ok(await tickets.UpdateAsync(id, dto, User.GetUserId(), User.GetRole()));
+
+    [HttpPost("{id:int}/assign")]
+public async Task<ActionResult<TicketDto>> Assign(int id, AssignTicketDto dto) =>
+    Ok(await tickets.AssignAsync(id, dto, User.GetUserId(), User.GetRole()));
+
+[HttpPost("{id:int}/status")]
+public async Task<ActionResult<TicketDto>> ChangeStatus(int id, ChangeStatusDto dto) =>
+    Ok(await tickets.ChangeStatusAsync(id, dto, User.GetUserId(), User.GetRole()));
+
+[HttpGet("{id:int}/history")]
+public async Task<ActionResult<List<HistoryDto>>> GetHistory(int id) =>
+    Ok(await tickets.GetHistoryAsync(id, User.GetUserId(), User.GetRole()));
 }

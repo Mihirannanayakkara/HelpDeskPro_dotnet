@@ -1,0 +1,110 @@
+@baseUrl = http://localhost:5146
+
+### Logins
+# @name loginAdmin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@helpdesk.local", "password": "Admin@12345" }
+
+###
+@adminToken = {{loginAdmin.response.body.token}}
+
+# @name loginAli
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "ali@test.com", "password": "Passw0rd!" }
+
+###
+@aliToken = {{loginAli.response.body.token}}
+
+# @name loginSara
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "sara@test.com", "password": "Passw0rd!" }
+
+###
+@saraToken = {{loginSara.response.body.token}}
+
+### 1. Ali tries to assign (403)
+POST {{baseUrl}}/api/tickets/1/assign
+Authorization: Bearer {{aliToken}}
+Content-Type: application/json
+
+{ "agentId": 3 }
+
+### 2. Sara assigns to herself (200, status becomes Assigned)
+POST {{baseUrl}}/api/tickets/1/assign
+Authorization: Bearer {{saraToken}}
+Content-Type: application/json
+
+{ "agentId": 3 }
+
+### 3. Sara jumps Assigned -> Resolved (400, invalid transition)
+POST {{baseUrl}}/api/tickets/1/status
+Authorization: Bearer {{saraToken}}
+Content-Type: application/json
+
+{ "status": "Resolved" }
+
+### 4. Sara moves to InProgress (200)
+POST {{baseUrl}}/api/tickets/1/status
+Authorization: Bearer {{saraToken}}
+Content-Type: application/json
+
+{ "status": "InProgress" }
+
+### 5. Ali tries to close early (400, InProgress -> Closed not allowed)
+POST {{baseUrl}}/api/tickets/1/status
+Authorization: Bearer {{aliToken}}
+Content-Type: application/json
+
+{ "status": "Closed" }
+
+### 6. Sara resolves (200, resolvedAt set)
+POST {{baseUrl}}/api/tickets/1/status
+Authorization: Bearer {{saraToken}}
+Content-Type: application/json
+
+{ "status": "Resolved" }
+
+### 7. Ali closes his resolved ticket (200)
+POST {{baseUrl}}/api/tickets/1/status
+Authorization: Bearer {{aliToken}}
+Content-Type: application/json
+
+{ "status": "Closed" }
+
+### 8. Sara tries to reopen the closed ticket (403, admin only)
+POST {{baseUrl}}/api/tickets/1/status
+Authorization: Bearer {{saraToken}}
+Content-Type: application/json
+
+{ "status": "InProgress" }
+
+### 9. Admin reopens it (200)
+POST {{baseUrl}}/api/tickets/1/status
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "status": "InProgress" }
+
+### 10. Admin reassigns? Not allowed while InProgress? Check: reassign to Sara again (200, no change)
+POST {{baseUrl}}/api/tickets/1/assign
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "agentId": 3 }
+
+### 11. Assign to a requester (400)
+POST {{baseUrl}}/api/tickets/1/assign
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "agentId": 2 }
+
+### 12. Full history (Ali can see it too)
+GET {{baseUrl}}/api/tickets/1/history
+Authorization: Bearer {{aliToken}}

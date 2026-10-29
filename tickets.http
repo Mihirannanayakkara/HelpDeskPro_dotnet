@@ -1,0 +1,103 @@
+@baseUrl = http://localhost:5146
+
+### Login as admin
+# @name loginAdmin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@helpdesk.local", "password": "Admin@12345" }
+
+###
+@adminToken = {{loginAdmin.response.body.token}}
+
+### Login as Ali (registered in Phase 2)
+# @name loginAli
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "ali@test.com", "password": "Passw0rd!" }
+
+###
+@aliToken = {{loginAli.response.body.token}}
+
+### Register Sara (she will become the agent)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{ "name": "Sara Agent", "email": "sara@test.com", "password": "Passw0rd!" }
+
+### List users (admin) to find Sara's id
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{adminToken}}
+
+### Make Sara an Agent (change 3 to her id)
+PUT {{baseUrl}}/api/users/3/role
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "role": "Agent" }
+
+### Login as Sara (after the role change)
+# @name loginSara
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "sara@test.com", "password": "Passw0rd!" }
+
+###
+@saraToken = {{loginSara.response.body.token}}
+
+### Categories
+GET {{baseUrl}}/api/categories
+Authorization: Bearer {{aliToken}}
+
+### Ali creates a ticket
+POST {{baseUrl}}/api/tickets
+Authorization: Bearer {{aliToken}}
+Content-Type: application/json
+
+{ "title": "Laptop will not boot", "description": "Black screen after the Windows logo appears.", "categoryId": 1, "priority": "High" }
+
+### Ali lists tickets (only his)
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer {{aliToken}}
+
+### Sara lists tickets (all)
+GET {{baseUrl}}/api/tickets
+Authorization: Bearer {{saraToken}}
+
+### Admin creates a ticket
+POST {{baseUrl}}/api/tickets
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{ "title": "Printer on floor 2 is offline", "description": "Nobody on the second floor can print since morning.", "categoryId": 3, "priority": "Low" }
+
+### Ali tries to open the ADMIN's ticket (should be 404)
+GET {{baseUrl}}/api/tickets/2
+Authorization: Bearer {{aliToken}}
+
+### Ali tries to change priority (should be 403)
+PUT {{baseUrl}}/api/tickets/1
+Authorization: Bearer {{aliToken}}
+Content-Type: application/json
+
+{ "title": "Laptop will not boot", "description": "Black screen after the Windows logo appears.", "categoryId": 1, "priority": "Critical" }
+
+### Sara changes priority (should be 200, new DueAt)
+PUT {{baseUrl}}/api/tickets/1
+Authorization: Bearer {{saraToken}}
+Content-Type: application/json
+
+{ "title": "Laptop will not boot", "description": "Black screen after the Windows logo appears.", "categoryId": 1, "priority": "Critical" }
+
+### Ali calls the admin-only endpoint (should be 403)
+GET {{baseUrl}}/api/users
+Authorization: Bearer {{aliToken}}
+
+### Invalid ticket (should be 400 with validation errors)
+POST {{baseUrl}}/api/tickets
+Authorization: Bearer {{aliToken}}
+Content-Type: application/json
+
+{ "title": "x", "description": "short", "categoryId": 1 }

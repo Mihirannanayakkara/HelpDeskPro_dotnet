@@ -11,9 +11,8 @@ namespace HelpDeskPro.Controllers;
 public class TicketsController(ITicketService tickets) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<TicketDto>>> GetAll() =>
-        Ok(await tickets.GetAllAsync(User.GetUserId(), User.GetRole()));
-
+public async Task<ActionResult<PagedResult<TicketDto>>> GetAll([FromQuery] TicketQuery query) =>
+    Ok(await tickets.GetAllAsync(query, User.GetUserId(), User.GetRole()));
     [HttpGet("{id:int}")]
     public async Task<ActionResult<TicketDto>> GetById(int id) =>
         Ok(await tickets.GetByIdAsync(id, User.GetUserId(), User.GetRole()));

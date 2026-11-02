@@ -7,17 +7,21 @@
     <UserSecretsId>4bd6a9a7-18b1-4454-94ab-786c72d65c82</UserSecretsId>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
-  </ItemGroup>
+ <ItemGroup>
+  <Compile Remove="HelpDeskPro.Tests\**" />
+  <EmbeddedResource Remove="HelpDeskPro.Tests\**" />
+  <None Remove="HelpDeskPro.Tests\**" />
+</ItemGroup>
+
+ <ItemGroup>
+   <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+   <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
+   <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+   <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
+     <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+     <PrivateAssets>all</PrivateAssets>
+   </PackageReference>
+   <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
+ </ItemGroup>
 
 </Project>

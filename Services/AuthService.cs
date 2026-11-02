@@ -15,7 +15,7 @@ public interface IAuthService
     Task<AuthResponseDto?> LoginAsync(LoginDto dto);         // null = wrong credentials
 }
 
-public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
+public class AuthService(AppDbContext db, IConfiguration config, ILogger<AuthService> logger) : IAuthService
 {
     public async Task<AuthResponseDto?> RegisterAsync(RegisterDto dto)
     {
@@ -43,7 +43,10 @@ public class AuthService(AppDbContext db, IConfiguration config) : IAuthService
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
 
         if (user is null || !user.IsActive || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-            return null;
+{
+    logger.LogWarning("Failed login attempt for {Email}", email);
+    return null;
+}
 
         return CreateResponse(user);
     }

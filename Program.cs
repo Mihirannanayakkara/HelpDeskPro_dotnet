@@ -11,11 +11,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 // replace: builder.Services.AddControllers();
 builder.Services.AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(
+    new JsonStringEnumConverter(allowIntegerValues: false)));
 // (this lets the API send and accept "High" instead of the number 2)
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();   // add this line
+builder.Services.AddHealthChecks();    
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITicketService, TicketService>();   // add this line
@@ -44,6 +46,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
             ClockSkew = TimeSpan.Zero
         };
+
+        options.Events = new JwtBearerEvents
+{
+    OnTokenValidated = async ctx =>
+    {
+        var db = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+        var userId = ctx.Principal!.GetUserId();
+        var isActive = await db.Users.AsNoTracking()
+            .Where(u => u.Id == userId).Select(u => u.IsActive).FirstOrDefaultAsync();
+        if (!isActive) ctx.Fail("User is inactive or no longer exists.");
+    }
+};
     });
 
 builder.Services.AddAuthorization();
@@ -66,4 +80,5 @@ app.UseHttpsRedirection();
 app.UseAuthentication();   // who are you?   (must come first)
 app.UseAuthorization();    // are you allowed? (then this)
 app.MapControllers();
+app.MapHealthChecks("/health"); 
 app.Run();

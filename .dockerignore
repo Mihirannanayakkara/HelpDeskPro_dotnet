@@ -1,0 +1,13 @@
+**/bin
+**/obj
+.git
+.github
+.vs
+.vscode
+*.db
+*.db-shm
+*.db-wal
+HelpDeskPro.Tests
+helpdesk-web
+*.http
+.env

@@ -437,6 +437,4 @@ Settings come from `appsettings.json`, user secrets, or environment variables. I
 - [ ] Application monitoring and alerts
 - [ ] Dependency scanning with Dependabot
 
-## License
 
-Add a license (for example MIT) or remove this section.

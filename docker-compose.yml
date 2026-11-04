@@ -2,14 +2,14 @@ services:
   api:
     build: .
     ports:
-      - "8090:8090"
+      - "8090:8080"
     environment:
       ConnectionStrings__Default: "Data Source=/data/helpdesk.db"
       Jwt__Key: ${JWT_KEY}
       Jwt__Issuer: "HelpDeskPro"
       Jwt__Audience: "HelpDeskProUsers"
       Seed__AdminPassword: ${ADMIN_PASSWORD}
-      Cors__Origins__0: "http://localhost:5173"
+      Cors__Origins__0: "http://localhost:5146"
       EnableDocs: "true"
     volumes:
       - helpdesk-data:/data

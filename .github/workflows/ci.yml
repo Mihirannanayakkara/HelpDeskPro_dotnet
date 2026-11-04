@@ -33,7 +33,7 @@ jobs:
       - name: Build Docker image
         run: docker build -t helpdeskpro-api .
   
-    deploy:
+  deploy:
     runs-on: ubuntu-latest
     needs: [test, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

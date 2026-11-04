@@ -8,7 +8,7 @@
 **An IT support ticket system (REST API) built with ASP.NET Core.**
 Employees report problems, support agents work on them, admins manage everything, and every change is recorded.
 
-> **Live demo:** `https://YOUR-SERVICE.onrender.com/openapi/v1.json` (API description) | `https://YOUR-SERVICE.onrender.com/health`
+> **Live demo:** `https://helpdeskpro-dotnet.onrender.com/openapi/v1.json` (API description) | `https://helpdeskpro-dotnet.onrender.com/health`
 > The demo runs on a free plan: the first request after a quiet period can take about a minute, and demo data resets when the service restarts.
 
 ---
